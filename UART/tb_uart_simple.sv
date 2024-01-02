@@ -27,7 +27,7 @@ module tb();
     
     initial begin
         rst = 1;
-        repeat(5) @(posedge dut.utx.uclk);
+        repeat(5) @(negedge dut.utx.uclk);
         rst = 0;
     
         for(int i = 0 ; i < 10; i++) begin
@@ -36,10 +36,10 @@ module tb();
             dintx = $urandom();
         
             wait(tx == 0);
-            @(posedge dut.utx.uclk);
+            @(negedge dut.utx.uclk);
         
             for(int j = 0; j < 8; j++) begin
-                @(posedge dut.utx.uclk);
+                @(negedge dut.utx.uclk);
                 tx_data = {tx,tx_data[7:1]};
             end
             
@@ -51,32 +51,23 @@ module tb();
             newd = 0;
         
             rx = 1'b0;
-            @(posedge dut.utx.uclk);
+            @(negedge dut.utx.uclk);
         
             for(int j = 0; j < 8; j++) begin
-                @(posedge dut.utx.uclk);
+                @(negedge dut.utx.uclk);
                 rx = $urandom;
                 rx_data = {rx, rx_data[7:1]};
             end
         
             @(posedge donerx);
-            @(posedge dut.utx.uclk);
-            @(posedge dut.utx.uclk);
+            @(negedge dut.utx.uclk);
+            @(negedge dut.utx.uclk);
             rx_data = 8'b0;
         end
     
     
     end
-  
-  initial begin
-    $dumpfile("dump.vcd"); 
-    $dumpvars;
-  end
-  
-  initial begin
-    #2000000;
-    $finish();
-  end
+    
  
  
 endmodule
