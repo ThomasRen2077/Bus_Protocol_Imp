@@ -133,8 +133,8 @@ module uart_rx_top (
                         case({sticky_parity, eps})
                             2'b00: pe_reg <= ~^{rx,data_out};       // odd parity -> pe : no. of 1's even
                             2'b01: pe_reg <= ^{rx,data_out};        // even parity -> pe : no. of 1's odd
-                            2'b10: pe_reg <= ~rx;               // parity should be 1 -> pe : parity is 0
-                            2'b00: pe_reg <= rx;                // parity should be 0 -> pe : parity is 1
+                            2'b10: pe_reg <= ~rx;                   // parity should be 1 -> pe : parity is 0
+                            2'b00: pe_reg <= rx;                    // parity should be 0 -> pe : parity is 1
                         endcase
                     end
                 end
