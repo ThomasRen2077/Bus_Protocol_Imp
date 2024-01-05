@@ -9,7 +9,7 @@
     logic       tx_rst;            //Transmit FIFO Reset
     logic       rx_rst;            //Receive FIFO Reset
     logic       ena;               //FIFO enabled
-  } fcr_t; //FIFO Control Register
+  } fcr_t; 
  
 // Line Control Register
    typedef struct packed {
@@ -100,8 +100,143 @@ module regs_uart(
         end
     end
 
-// Registers Output Data
+// DLSB, Least Significant byte of divisor Latch
+// If wr = 1, addr = 0 and dlab = 1, write to dlsb
+    div_t dl;
+    logic wr_dlsb;
+    assign wr_dlsb = wr_i & (addr_i == 3'b000) & (csr.lcr.dlab);
+
+    always_ff @(posedge clk) begin
+        if(wr_dlsb)     dl.dlsb <= din_i;
+    end
+
+// DMSB, Most Significant byte of divisor Latch
+// If wr = 1, addr = 1 and dlab = 1, write to dmsb
+    logic wr_dmsb;
+    assign wr_dmsb = wr_i & (addr_i == 3'b001) & (csr.lcr.dlab);
+
+    always_ff @(posedge clk) begin
+        if(wr_dmsb)     dl.dmsb <= din_i;
+    end
+
+// Detect update of Divisor Latch
+    logic dl_updated;
+    always_ff @ (posedge clk) begin
+        dl_updated <= wr_dlsb | wr_dmsb;
+    end
+
+// Generate Baud_pulse
+// Set counter;
+    logic [15:0] baud_counter;
+    always_ff @(posedge clk, posedge rst) begin
+        if(rst)                                     baud_counter <= '0;
+        else if(dl_updated | (baud_counter == 0))   baud_counter <= {dl.dmsb, dl.dlsb};
+        else                                        baud_counter <= baud_counter - 1;
+    end
+
+// Pulse when counter reaches 0 and divior is not 0
+    always @(posedge clk) begin
+        baud_out <= (| dl) & (baud_counter == 0); 
+    end
+
+// FIFO Control Register (FCR)
+// If wr = 1, addr = 2, write to FCR
+    logic wr_fcr;
+    assign wr_fcr = wr_i & (addr_i == 3'h2);
+
+    always_ff @(posedge clk, posedge rst) begin
+        if(rst)             csr.fcr <= '0;
+        else if(wr_fcr) begin
+            csr.fcr.rx_trigger <= din_i[7:6];
+            csr.fcr.dma_mode   <= din_i[3];
+            csr.fcr.tx_rst     <= din_i[2];
+            csr.fcr.rx_rst     <= din_i[1];
+            csr.fcr.ena        <= din_i[0];
+        end
+        else begin
+            csr.fcr.tx_rst     <= 1'b0;
+            csr.fcr.rx_rst     <= 1'b0;
+        end
+    end
+
+    assign tx_rst = csr.fcr.tx_rst;
+    assign rx_rst = csr.fcr.rx_rst;
+
+// Based on Value of rx_trigger, set threshold count for rx fifo
+    always_comb begin
+        if(csr.fcr.ena == 1'b0) begin
+            rx_fifo_threshold = 4'd0;
+        end
+        else
+            case(csr.fcr.rx_trigger)
+            2'b00: rx_fifo_threshold = 4'd1;
+            2'b01: rx_fifo_threshold = 4'd4;
+            2'b10: rx_fifo_threshold = 4'd8;
+            2'b11: rx_fifo_threshold = 4'd14;
+            endcase
+    end
+
+// Line Control Register (LCR) -> defines format of transmitted data
+// If wr = 1, addr = 3, write to LCR
+    logic wr_lcr;
+    assign wr_lcr = wr_i & (addr_i == 3'h3);
+
+    always_ff @(posedge clk, posedge rst) begin
+        if(rst)             csr.lcr <= '0;
+        else if (wr_lcr)    csr.lcr <= din_i;
+    end
+
+// If rd = 1, addr = 3, read LCR
+    logic [7:0] lcr_temp;
+    logic read_lcr; 
+    assign read_lcr = rd_i & (addr_i == 3'h3);
+
+    always_ff @( posedge clk ) begin
+        if(read_lcr)        lcr_temp <= csr.lcr;
+    end
+
+// Line Status Register (LSR)
+    always@(posedge clk, posedge rst) begin
+        if(rst)     csr.lsr <= 8'h60;                           // both fifo and shift register are empty thr_e = 1 , t_empt = 1  // 0110 0000
+        else begin
+                    csr.lsr.dr <=  ~rx_fifo_empty_i;
+                    csr.lsr.oe <=   rx_oe;
+                    csr.lsr.pe <=   rx_pe;
+                    csr.lsr.fe <=   rx_fe;
+                    csr.lsr.bi <=   rx_bi;
+        end
+    end
+ 
+// If rd = 1, addr = 5, read LSR
+    logic [7:0] lsr_temp; 
+    logic read_lsr;
+    assign read_lsr = rd_i & (addr_i == 3'h5); 
+    
     always@(posedge clk) begin
+        if(read_lsr)        lsr_temp <= csr.lsr; 
+    end
+
+// Scratch pad register (SCR), provide temporary storage for our data without affecting any operation
+// If wr = 1, addr = 7, write to SCR
+    logic wr_scr;
+    assign wr_scr = wr_i & (addr_i == 3'h7);
+
+    always_ff @(posedge clk, posedge rst) begin
+        if(rst)             csr.scr <= '0;
+        else if (wr_scr)    csr.scr <= din_i;
+    end
+ 
+// If rd = 1, addr = 7, read SCR
+    logic [7:0] scr_temp; 
+    logic read_scr;
+    assign read_scr = rd_i & (addr_i == 3'h7); 
+    
+    always@(posedge clk) begin
+        if(read_scr)        scr_temp <= csr.scr; 
+    end
+
+// Read Register
+    always_ff @(posedge clk) begin
         case(addr_i)
             0: dout_o <= csr.lcr.dlab ? dl.dlsb : rx_data;      // Least Significant byte of divisor Latch or Receive Hold Register depends on Divisor Latch Access bit of LCR
             1: dout_o <= csr.lcr.dlab ? dl.dmsb : 8'h00;        // Most Significant byte of divisor Latch or Interrupt Enable Register(not implemented) depends on Divisor Latch Access bit of LCR
