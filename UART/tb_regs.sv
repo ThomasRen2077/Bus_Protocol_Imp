@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 module uart_reg_tb;
-    logic clk;
+    logic clk = 0;
     logic rst;
 
     logic wr_i;
@@ -29,9 +29,9 @@ module uart_reg_tb;
     logic [3:0] rx_fifo_threshold;
 
     logic [7:0] dout_o;
-    logic csr_t csr_o;
+    csr_t csr_o;
     
-    regs_uart dut (clk, rst, wr_i, rd_i, rx_fifo_empty_i, rx_oe, rx_pe, rx_fe, rx_bi, rx_fifo_in, addr_i, din_i, tx_push_o, rx_pop_o, baud_out, tx_rst, rx_rst, rx_fifo_threshold, dout_o, csr);
+    regs_uart dut (clk, rst, wr_i, rd_i, rx_fifo_empty_i, rx_oe, rx_pe, rx_fe, rx_bi, rx_fifo_in, addr_i, din_i, tx_push_o, rx_pop_o, baud_out, tx_rst, rx_rst, rx_fifo_threshold, dout_o, csr_o);
     
     always #5 clk = ~clk;
     

@@ -78,7 +78,7 @@ module regs_uart(
     output logic [3:0] rx_fifo_threshold,
 
     output logic [7:0] dout_o,
-    output logic csr_t csr_o
+    output csr_t csr_o
 );
 
 // Instantiate control status registers

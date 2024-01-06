@@ -157,13 +157,20 @@ module uart_tx_top (
     end
 
 // compute parity
-    always_comb begin
-        case(wls)
-            2'b00: d_parity = ^din[4:0];
-            2'b01: d_parity = ^din[5:0];
-            2'b10: d_parity = ^din[6:0];
-            2'b11: d_parity = ^din[7:0];             
-        endcase
+    always_ff @(posedge clk, posedge rst) begin
+        if(rst)     d_parity <= 0;
+        else if(baud_pulse) begin
+            case(state_reg)
+                STATE_STRT: begin
+                    case(wls)
+                        2'b00: d_parity <= ^shift_reg[4:0];
+                        2'b01: d_parity <= ^shift_reg[5:0];
+                        2'b10: d_parity <= ^shift_reg[6:0];
+                        2'b11: d_parity <= ^shift_reg[7:0];
+                    endcase
+                end
+            endcase
+        end
     end
 
    always_ff @(posedge clk, posedge rst) begin

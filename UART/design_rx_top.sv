@@ -16,7 +16,9 @@ module uart_rx_top (
     output logic push,
     output logic pe,            // parity error
     output logic fe,            // frame error
-    output logic bi 
+    output logic bi,
+    
+    output logic [7:0] data_out
 );
 
 // Detect a fall edge
@@ -42,7 +44,6 @@ module uart_rx_top (
     
     logic [4:0] count = '0;
     logic [2:0] bit_count = '0;
-    logic [7:0] data_out = '0;
     logic pe_reg;                           
 
 // State Transition Logic
