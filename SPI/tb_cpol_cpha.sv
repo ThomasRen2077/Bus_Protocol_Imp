@@ -126,7 +126,21 @@ module top();
         end
         endcase
     end
+
+// Slave
     
- 
+    logic [7:0] rx_data = 7'h0;
+    integer r_count = 0;
+    
+    always@(posedge sclk) begin
+        if(cs == 0) begin
+            if(r_count < 8)
+            begin
+                rx_data <= {rx_data[6:0],mosi};
+                r_count  <= r_count + 1;
+            end 
+        end
+        else    r_count <= 8'h0;
+    end
  
 endmodule
