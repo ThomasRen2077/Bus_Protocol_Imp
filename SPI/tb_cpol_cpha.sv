@@ -143,4 +143,14 @@ module top();
         else    r_count <= 8'h0;
     end
  
+    initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars;
+    end
+
+    initial begin
+        #20000;
+        $finish();
+    end
+
 endmodule

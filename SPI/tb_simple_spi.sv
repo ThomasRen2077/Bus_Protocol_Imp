@@ -21,7 +21,7 @@ module tb;
     end
 
     initial begin
-        $dumpfile("file.vcd");
+        $dumpfile("dump.vcd");
         $dumpvars;
     end
 
